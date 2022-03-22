@@ -27,11 +27,13 @@ string_list = []
 label_list = []
 star_list = []
 
-split_idx = 4  # Specifies what split to start at.
+split_idx = 0  # Specifies what split to start at.
 num_splits = 5  # Splits the total data into the specified amount of files
 split_len = round(len(product_links) / num_splits)  # Amount of products in each split
+start_idx = (split_len * split_idx + 1) if split_idx != 0 else 0
+print(start_idx)
 
-for idx, product_link in enumerate(product_links[(split_len * split_idx + 1):]):
+for idx, product_link in enumerate(product_links[start_idx:]):
     for page in range(1, 101):
         driver.get('{}?page={}'.format(product_link, page))
         repeat = False
@@ -51,7 +53,6 @@ for idx, product_link in enumerate(product_links[(split_len * split_idx + 1):]):
                     Notification(title='G2 Scraper', description='Please Re-enter Captcha!').send()
                 counter += 1  # Luckily, the captcha detection system is based on time rather than quantity,
                 sleep(3)  # so you only need to do the captcha once every hour or so.
-            print("saving cookies...")
             pickle.dump(driver.get_cookies(), open("cookies.pkl", "wb"))
         elif len(driver.find_elements(by=By.XPATH, value='/html/body/div/div[@id="cf-error-details"]')):
             counter = 40
@@ -69,8 +70,7 @@ for idx, product_link in enumerate(product_links[(split_len * split_idx + 1):]):
         review_list = driver.find_elements(by=By.XPATH, value=test_path)
 
         if len(review_list) == 0:
-            print("{} ended early at page {}".format(product_link, page))
-            sleep(1)
+            print("{} ended early at page {}. index #{}".format(product_link, page, idx))
             break
         for review in review_list:
             my_review = review.find_elements(by=By.CLASS_NAME, value='formatted-text')
@@ -81,9 +81,8 @@ for idx, product_link in enumerate(product_links[(split_len * split_idx + 1):]):
             temp_string = ''
             # many <p> in one review, got to join them together
             for i in my_review:
-                temp_string = temp_string + i.get_attribute('textContent')
-            string_sublist = temp_string.replace('Review collected by and hosted on G2.com.',
-                                                 ";")  # get the three Q&A in one review
+                temp_string = temp_string + ' ' + i.get_attribute('textContent')
+            string_sublist = temp_string.replace('Review collected by and hosted on G2.com.', '')
             string_list.append(string_sublist)
             label_list.append(my_label.get_attribute('textContent'))
             star_list.append(star)
